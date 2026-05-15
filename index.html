@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chụp Căn Cước Công Dân</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Scripts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+      :root {
+        --accent: #0A5BFF;
+        --bg-light: #f5f7fb;
+        --card-bg: #ffffff;
+        --text-main: #1d1d1f;
+        --text-secondary: #86868b;
+        --border-color: #e5e7eb;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg-light: #000000;
+          --card-bg: #1c1c1e;
+          --text-main: #f5f5f7;
+          --text-secondary: #8e8e93;
+          --border-color: #38383a;
+        }
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-light);
+        color: var(--text-main);
+        transition: background-color 0.3s ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .one-ui-card {
+        background-color: var(--card-bg);
+        border-radius: 24px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--border-color);
+        margin-bottom: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .btn-primary {
+        background-color: var(--accent);
+        color: white;
+        height: 52px;
+        border-radius: 26px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        transition: opacity 0.2s ease;
+      }
+
+      .btn-primary:active {
+        opacity: 0.7;
+        transform: scale(0.98);
+      }
+
+      .btn-outline {
+        border: 2px solid var(--accent);
+        color: var(--accent);
+        height: 52px;
+        border-radius: 26px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+      }
+
+      .preview-container {
+        width: 100%;
+        aspect-ratio: 85.6 / 53.98;
+        border: 2px dashed var(--border-color);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+        background-color: rgba(10, 91, 255, 0.03);
+      }
+
+      .preview-container.portrait {
+        aspect-ratio: 3 / 4;
+        width: 160px;
+        margin: 0 auto;
+      }
+
+      .preview-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .placeholder-svg {
+        width: 80%;
+        opacity: 0.4;
+      }
+
+      .stepper-dot {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 600;
+        background: var(--card-bg);
+        z-index: 2;
+      }
+
+      .stepper-dot.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+      }
+
+      .stepper-line {
+        position: absolute;
+        top: 16px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--border-color);
+        z-index: 1;
+      }
+
+      .form-input {
+        width: 100%;
+        background-color: var(--card-bg);
+        border: 1.5px solid var(--border-color);
+        border-radius: 14px;
+        height: 48px;
+        padding: 0 16px;
+        font-size: 15px;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .form-input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(10, 91, 255, 0.1);
+      }
+
+      /* Fixed bottom bar */
+      .bottom-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+        padding: 16px 20px 32px;
+        border-top: 1px solid var(--border-color);
+        z-index: 100;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .bottom-bar {
+          background: rgba(28, 28, 30, 0.8);
+        }
+      }
+
+      .toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-100px);
+        background: #323232;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 500;
+        z-index: 1000;
+        transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      }
+
+      .toast.show {
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* Loading Animation */
+      .loader {
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s linear infinite;
+        display: none;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* Radio Buttons */
+      .radio-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .radio-label {
+        border: 1.5px solid var(--border-color);
+        border-radius: 16px;
+        padding: 12px;
+        text-align: center;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .radio-input {
+        display: none;
+      }
+
+      .radio-input:checked + .radio-label {
+        border-color: var(--accent);
+        background: rgba(10, 91, 255, 0.05);
+        color: var(--accent);
+      }
+
+      .fade-in {
+        animation: fadeIn 0.4s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    </style>
+  </head>
+  <body class="pb-32">
+    <!-- Header -->
+    <header class="sticky top-0 bg-white dark:bg-[#1c1c1e] z-50 px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800 shadow-sm">
+      <h1 class="text-xl font-bold">Chụp CCCD</h1>
+      <button class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <i data-lucide="settings" class="w-6 h-6 text-gray-500"></i>
+      </button>
+    </header>
+
+    <main class="px-5 mt-6 max-w-[500px] mx-auto">
+      <!-- Progress Bar -->
+      <div class="relative flex justify-between items-center mb-8 px-4">
+        <div class="stepper-line"></div>
+        <div class="flex flex-col items-center gap-2">
+          <div id="step-1" class="stepper-dot active">1</div>
+          <span class="text-[11px] font-medium text-[#0A5BFF]">Mặt trước</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div id="step-2" class="stepper-dot">2</div>
+          <span class="text-[11px] font-medium text-gray-400">Mặt sau</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div id="step-3" class="stepper-dot">3</div>
+          <span class="text-[11px] font-medium text-gray-400">Chủ thể</span>
+        </div>
+      </div>
+
+      <!-- Card Mặt Trước -->
+      <div class="one-ui-card p-5 fade-in">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-semibold text-lg">1. Chụp mặt trước</h2>
+          <div id="status-1" class="hidden text-green-500 flex items-center gap-1 font-medium text-sm">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> Đã chụp
+          </div>
+        </div>
+        <p class="text-sm text-gray-500 mb-4">Đặt mặt trước CCCD vào khung hình và chụp</p>
+        
+        <div class="preview-container mb-4" onclick="document.getElementById('input-front').click()">
+          <img id="preview-front" class="preview-img hidden" src="" alt="Mặt trước">
+          <div id="placeholder-front" class="flex flex-col items-center gap-3">
+             <svg class="placeholder-svg" viewBox="0 0 856 539" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="856" height="539" rx="30" fill="#E8EDF5"/>
+                <circle cx="120" cy="120" r="40" fill="#CBD5E1"/>
+                <rect x="200" y="100" width="400" height="40" rx="8" fill="#CBD5E1"/>
+                <rect x="200" y="160" width="300" height="30" rx="8" fill="#CBD5E1"/>
+                <rect x="70" y="200" width="100" height="130" rx="10" fill="#CBD5E1"/>
+                <rect x="200" y="220" width="500" height="20" rx="4" fill="#CBD5E1"/>
+                <rect x="200" y="260" width="400" height="20" rx="4" fill="#CBD5E1"/>
+                <rect x="200" y="300" width="300" height="20" rx="4" fill="#CBD5E1"/>
+             </svg>
+          </div>
+        </div>
+
+        <input type="file" id="input-front" class="hidden" accept="image/*" onchange="handleFile(event, 'front')">
+        <button onclick="document.getElementById('input-front').click()" class="btn-primary">
+          <i data-lucide="camera" class="w-5 h-5"></i>
+          <span>Chụp mặt trước</span>
+        </button>
+      </div>
+
+      <!-- Card Mặt Sau -->
+      <div class="one-ui-card p-5 fade-in" style="animation-delay: 0.1s">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-semibold text-lg">2. Chụp mặt sau</h2>
+          <div id="status-2" class="hidden text-green-500 flex items-center gap-1 font-medium text-sm">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> Đã chụp
+          </div>
+        </div>
+        <p class="text-sm text-gray-500 mb-4">Đặt mặt sau CCCD vào khung hình và chụp</p>
+        
+        <div class="preview-container mb-4" onclick="document.getElementById('input-back').click()">
+          <img id="preview-back" class="preview-img hidden" src="" alt="Mặt sau">
+          <div id="placeholder-back" class="flex flex-col items-center gap-3 text-center">
+             <svg class="placeholder-svg" viewBox="0 0 856 539" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="856" height="539" rx="30" fill="#E8EDF5"/>
+                <rect x="50" y="50" width="100" height="80" rx="10" fill="#CBD5E1"/>
+                <rect x="650" y="350" width="150" height="150" rx="10" fill="#CBD5E1"/>
+                <rect x="50" y="400" width="500" height="40" rx="8" fill="#CBD5E1"/>
+             </svg>
+          </div>
+        </div>
+
+        <input type="file" id="input-back" class="hidden" accept="image/*" onchange="handleFile(event, 'back')">
+        <button onclick="document.getElementById('input-back').click()" class="btn-primary">
+          <i data-lucide="camera" class="w-5 h-5"></i>
+          <span>Chụp mặt sau</span>
+        </button>
+      </div>
+
+      <!-- Card Chủ Thể -->
+      <div class="one-ui-card p-5 fade-in" style="animation-delay: 0.2s">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-semibold text-lg">3. Chụp ảnh chủ thể</h2>
+          <div id="status-portrait" class="hidden text-green-500 flex items-center gap-1 font-medium text-sm">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> Đã chụp
+          </div>
+        </div>
+        <p class="text-sm text-gray-500 mb-4">Chụp ảnh chân dung rõ nét trong môi trường đủ sáng</p>
+        
+        <div class="preview-container portrait mb-4" onclick="document.getElementById('input-portrait').click()">
+          <img id="preview-portrait" class="preview-img hidden" src="" alt="Chân dung">
+          <div id="placeholder-portrait" class="flex flex-col items-center justify-center h-full">
+             <i data-lucide="user" class="w-20 h-20 text-[#CBD5E1]"></i>
+          </div>
+        </div>
+
+        <input type="file" id="input-portrait" class="hidden" accept="image/*" onchange="handleFile(event, 'portrait')">
+        <button onclick="document.getElementById('input-portrait').click()" class="btn-primary">
+          <i data-lucide="camera" class="w-5 h-5"></i>
+          <span>Chụp ảnh chủ thể</span>
+        </button>
+      </div>
+
+      <!-- Card Thông Tin -->
+      <div class="one-ui-card p-6 fade-in" style="animation-delay: 0.3s">
+        <h2 class="font-semibold text-lg mb-1">Thông tin <span class="text-gray-400 font-normal text-sm">(tùy chọn)</span></h2>
+        <p class="text-xs text-gray-400 mb-5">Thông tin này sẽ được in vào file xuất</p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="text-[13px] font-semibold text-gray-500 mb-1.5 block">Họ và tên</label>
+            <input type="text" id="info-name" class="form-input" placeholder="Nhập họ và tên">
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-[13px] font-semibold text-gray-500 mb-1.5 block">Số điện thoại</label>
+              <input type="tel" id="info-phone" class="form-input" placeholder="09xx xxx xxx">
+            </div>
+            <div>
+              <label class="text-[13px] font-semibold text-gray-500 mb-1.5 block">Ngày sinh</label>
+              <input type="date" id="info-dob" class="form-input">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+             <div>
+                <label class="text-[13px] font-semibold text-gray-500 mb-1.5 block">Giới tính</label>
+                <select id="info-gender" class="form-input">
+                  <option value="">Chọn giới tính</option>
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+             </div>
+             <div>
+                <label class="text-[13px] font-semibold text-gray-500 mb-1.5 block">Email</label>
+                <input type="email" id="info-email" class="form-input" placeholder="abc@gmail.com">
+             </div>
+          </div>
+          <div>
+            <label class="text-[13px] font-semibold text-gray-500 mb-1.5 block">Địa chỉ</label>
+            <input type="text" id="info-address" class="form-input" placeholder="Nhập địa chỉ">
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Xuất File -->
+      <div class="one-ui-card p-6 fade-in pb-10" style="animation-delay: 0.4s">
+        <h2 class="font-semibold text-lg mb-4">Cấu hình xuất file</h2>
+        
+        <div class="radio-group mb-6">
+          <label>
+            <input type="radio" name="export-type" value="jpg" class="radio-input" checked>
+            <div class="radio-label">
+              <i data-lucide="image" class="w-5 h-5 mx-auto mb-1"></i>
+              <span>Ảnh JPG</span>
+            </div>
+          </label>
+          <label>
+            <input type="radio" name="export-type" value="pdf" class="radio-input">
+            <div class="radio-label">
+              <i data-lucide="file-text" class="w-5 h-5 mx-auto mb-1"></i>
+              <span>PDF A4</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Action Bar -->
+    <div class="bottom-bar">
+      <button id="btn-export" onclick="exportFile()" class="btn-primary shadow-xl">
+        <div class="loader"></div>
+        <i data-lucide="download" class="w-5 h-5"></i>
+        <span>Xuất file ngay</span>
+      </button>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast">Thông báo</div>
+
+    <!-- Hidden Canvas for rendering -->
+    <canvas id="export-canvas" class="hidden"></canvas>
+
+    <script>
+      // Initialize icons
+      lucide.createIcons();
+
+      const state = {
+        front: null,
+        back: null,
+        portrait: null
+      };
+
+      function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+      }
+
+      function handleFile(event, side) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = document.getElementById(`preview-${side}`);
+          const placeholder = document.getElementById(`placeholder-${side}`);
+          const statusId = side === 'front' ? 'status-1' : (side === 'back' ? 'status-2' : 'status-portrait');
+          const status = document.getElementById(statusId);
+          const step = document.getElementById(`step-${side === 'front' ? '1' : side === 'back' ? '2' : '3'}`);
+
+          img.src = e.target.result;
+          img.classList.remove('hidden');
+          placeholder.classList.add('hidden');
+          if (status) status.classList.remove('hidden');
+          
+          if (step) {
+            step.classList.add('active');
+            // Update line if possible (not implemented for complexity)
+          }
+
+          state[side] = e.target.result;
+          showToast(`Đã nhận ảnh ${side === 'front' ? 'mặt trước' : side === 'back' ? 'mặt sau' : 'chân dung'}`);
+        };
+        reader.readAsDataURL(file);
+      }
+
+      async function exportFile() {
+        const hasInfo = ['info-name', 'info-phone', 'info-dob', 'info-email', 'info-address'].some(id => document.getElementById(id).value.trim() !== '');
+        if (!state.front && !state.back && !state.portrait && !hasInfo) {
+          showToast('Vui lòng cung cấp ít nhất 1 ảnh hoặc thông tin cá nhân!');
+          return;
+        }
+
+        const btn = document.getElementById('btn-export');
+        const loader = btn.querySelector('.loader');
+        const icon = btn.querySelector('svg') || btn.querySelector('i');
+        const text = btn.querySelector('span');
+
+        btn.disabled = true;
+        if (loader) loader.style.display = 'block';
+        if (icon) icon.style.display = 'none';
+        if (text) text.textContent = 'Đang xử lý...';
+
+        const exportType = document.querySelector('input[name="export-type"]:checked').value;
+
+        try {
+          if (exportType === 'jpg') {
+            await generateJPG();
+          } else {
+            await generatePDF();
+          }
+          showToast('Xuất file thành công!');
+        } catch (err) {
+          console.error(err);
+          showToast('Có lỗi xảy ra khi xuất file.');
+        } finally {
+          btn.disabled = false;
+          if (loader) loader.style.display = 'none';
+          if (icon) icon.style.display = 'block';
+          if (text) text.textContent = 'Xuất file ngay';
+        }
+      }
+
+      function loadImage(src) {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.src = src;
+        });
+      }
+
+      async function generateJPG() {
+        const canvas = document.getElementById('export-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // High res canvas for printing (Approx A4 aspect but landscape)
+        canvas.width = 2480;
+        canvas.height = 1748;
+
+        // Background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Titles
+        ctx.fillStyle = '#1d1d1f';
+        ctx.font = 'bold 80px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText('HỒ SƠ CĂN CƯỚC CÔNG DÂN', canvas.width / 2, 150);
+
+        // Borders & Layout
+        const cardW = 900;
+        const cardH = (cardW * 53.98) / 85.6;
+        const margin = 100;
+
+        // Draw Front & Back side by side
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 2;
+
+        if (state.front) {
+          const imgFront = await loadImage(state.front);
+          ctx.drawImage(imgFront, margin, 250, cardW, cardH);
+          ctx.strokeRect(margin, 250, cardW, cardH);
+        }
+
+        if (state.back) {
+          const imgBack = await loadImage(state.back);
+          ctx.drawImage(imgBack, margin + cardW + 80, 250, cardW, cardH);
+          ctx.strokeRect(margin + cardW + 80, 250, cardW, cardH);
+        }
+
+        if (state.portrait) {
+          const imgPortrait = await loadImage(state.portrait);
+          const pW = 400;
+          const pH = (pW * 4) / 3;
+          ctx.drawImage(imgPortrait, canvas.width - margin - pW, 250, pW, pH);
+          ctx.strokeRect(canvas.width - margin - pW, 250, pW, pH);
+        }
+
+        // Draw Info
+        ctx.fillStyle = '#1d1d1f';
+        ctx.font = '600 50px Inter';
+        ctx.textAlign = 'left';
+        
+        const infoX = margin;
+        let infoY = 250 + cardH + 150;
+
+        ctx.fillText('THÔNG TIN CÁ NHÂN', infoX, infoY);
+        infoY += 80;
+        
+        ctx.font = '400 40px Inter';
+        ctx.fillStyle = '#4b5563';
+
+        const name = document.getElementById('info-name').value || 'N/A';
+        const phone = document.getElementById('info-phone').value || 'N/A';
+        const dob = document.getElementById('info-dob').value || 'N/A';
+        const gender = document.getElementById('info-gender').value || 'N/A';
+        const email = document.getElementById('info-email').value || 'N/A';
+        const address = document.getElementById('info-address').value || 'N/A';
+
+        ctx.fillText(`Họ và tên: ${name}`, infoX, infoY);
+        ctx.fillText(`Số điện thoại: ${phone}`, infoX + 800, infoY);
+        infoY += 70;
+        ctx.fillText(`Ngày sinh: ${dob}`, infoX, infoY);
+        ctx.fillText(`Giới tính: ${gender}`, infoX + 800, infoY);
+        infoY += 70;
+        ctx.fillText(`Email: ${email}`, infoX, infoY);
+        infoY += 70;
+        ctx.fillText(`Địa chỉ: ${address}`, infoX, infoY);
+
+        // Footer
+        ctx.font = 'italic 30px Inter';
+        ctx.textAlign = 'right';
+        ctx.fillText(`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`, canvas.width - margin, canvas.height - 60);
+
+        // Download
+        const link = document.createElement('a');
+        link.download = `CCCD_${name.replace(/\s/g, '_')}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.click();
+      }
+
+      async function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = doc.internal.pageSize.getWidth();
+        
+        doc.setFont('Inter', 'bold');
+        doc.setFontSize(20);
+        doc.text('HỒ SƠ CĂN CƯỚC CÔNG DÂN', pageWidth / 2, 20, { align: 'center' });
+
+        const cardW = 85.6;
+        const cardH = 53.98;
+        const margin = 15;
+
+        // Add images
+        if (state.front) {
+          doc.addImage(state.front, 'JPEG', margin, 40, cardW, cardH);
+          doc.rect(margin, 40, cardW, cardH);
+        }
+        
+        if (state.back) {
+          doc.addImage(state.back, 'JPEG', margin + cardW + 10, 40, cardW, cardH);
+          doc.rect(margin + cardW + 10, 40, cardW, cardH);
+        }
+
+        if (state.portrait) {
+          const pW = 40;
+          const pH = (pW * 4) / 3;
+          doc.addImage(state.portrait, 'JPEG', pageWidth - margin - pW, 100, pW, pH);
+          doc.rect(pageWidth - margin - pW, 100, pW, pH);
+        }
+
+        // Info
+        doc.setFontSize(14);
+        doc.text('THÔNG TIN CHI TIẾT', margin, 110);
+        
+        doc.setFontSize(11);
+        doc.setFont('Inter', 'normal');
+        
+        let infoY = 120;
+        const name = document.getElementById('info-name').value || 'N/A';
+        const phone = document.getElementById('info-phone').value || 'N/A';
+        const dob = document.getElementById('info-dob').value || 'N/A';
+        const gender = document.getElementById('info-gender').value || 'N/A';
+        const email = document.getElementById('info-email').value || 'N/A';
+        const address = document.getElementById('info-address').value || 'N/A';
+
+        doc.text(`Họ và tên: ${name}`, margin, infoY);
+        infoY += 8;
+        doc.text(`Số điện thoại: ${phone}`, margin, infoY);
+        infoY += 8;
+        doc.text(`Ngày sinh: ${dob}`, margin, infoY);
+        infoY += 8;
+        doc.text(`Giới tính: ${gender}`, margin, infoY);
+        infoY += 8;
+        doc.text(`Email: ${email}`, margin, infoY);
+        infoY += 8;
+        doc.text(`Địa chỉ: ${address}`, margin, infoY);
+
+        doc.setFontSize(8);
+        doc.text(`Xuất lúc: ${new Date().toLocaleString('vi-VN')}`, pageWidth - margin, 280, { align: 'right' });
+
+        doc.save(`CCCD_${name.replace(/\s/g, '_')}.pdf`);
+      }
+    </script>
+  </body>
+</html>
